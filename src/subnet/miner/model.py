@@ -2,6 +2,16 @@ from communex.module import Module, endpoint
 from communex.key import generate_keypair
 from keylimiter import TokenBucketLimiter
 
+from src.subnet.utils import log
+
+import time
+
+import omega
+from omega.imagebind_wrapper import ImageBind
+from omega.miner_utils import search_and_embed_videos
+from omega.augment import LocalLLMAugment, OpenAIAugment, NoAugment
+from omega.utils.config import QueryAugment, config
+from omega.constants import VALIDATOR_TIMEOUT
 
 class Miner(Module):
     """
@@ -14,19 +24,48 @@ class Miner(Module):
         generate: Generates a response to a given prompt using a specified model.
     """
 
+    def __init__(self):
+        super().__init__()
+
+        self.config = config(args_type="miner")
+        print(f"\nRunning Omega Miner with the following configuration:")
+        print("---------------------------------------------------------")
+        self.config.pretty_print()
+        print("---------------------------------------------------------\n")
+        
+        query_augment_type = QueryAugment(self.config.neuron.query_augment)
+        if query_augment_type == QueryAugment.NoAugment:
+            self.augment = NoAugment(device=self.config.neuron.device)
+        elif query_augment_type == QueryAugment.LocalLLMAugment:
+            self.augment = LocalLLMAugment(device=self.config.neuron.device)
+        elif query_augment_type == QueryAugment.OpenAIAugment:
+            self.augment = OpenAIAugment(device=self.config.neuron.device)
+        else:
+            raise ValueError("Invalid query augment")
+        self.imagebind = ImageBind()
+
     @endpoint
-    def generate(self, prompt: str, model: str = "foo"):
+    def generate(self, synapse: omega.protocol.Videos) -> omega.protocol.Videos:
         """
-        Generates a response to a given prompt using a specified model.
+        Generates a response to a given Videos synapse request from a validator.
 
         Args:
-            prompt: The prompt to generate a response for.
-            model: The model to use for generating the response (default: "gpt-3.5-turbo").
+            synapse: The synapse Videos request
 
         Returns:
-            None
+            Videos object
         """
-        print(f"Answering: `{prompt}` with model `{model}`")
+        log.info(f"Received scraping request: {synapse.num_videos} videos for query '{synapse.query}'")
+        start = time.time()
+        synapse.video_metadata = search_and_embed_videos(
+            self.augment(synapse.query), synapse.num_videos, self.imagebind
+        )
+        time_elapsed = time.time() - start
+        if len(synapse.video_metadata) == synapse.num_videos and time_elapsed < VALIDATOR_TIMEOUT:
+            log.info(f"–––––– SCRAPING SUCCEEDED: Scraped {len(synapse.video_metadata)}/{synapse.num_videos} videos in {time_elapsed} seconds.")
+        else:
+            log.info(f"–––––– SCRAPING FAILED: Scraped {len(synapse.video_metadata)}/{synapse.num_videos} videos in {time_elapsed} seconds.")
+        return synapse
 
 
 if __name__ == "__main__":
@@ -45,4 +84,5 @@ if __name__ == "__main__":
     app = server.get_fastapi_app()
 
     # Only allow local connections
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    #uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -215,14 +215,14 @@ class VideosValidator(Module):
         key: Keypair,
         netuid: int,
         client: CommuneClient,
-        call_timeout: int = 120, #60 was default
+        call_timeout: int = 60,
     ) -> None:
         
         super().__init__()
         self.client = client
         self.key = key
         self.netuid = netuid
-        self.call_timeout = call_timeout
+        self.call_timeout = VALIDATOR_TIMEOUT + VALIDATOR_TIMEOUT_MARGIN
 
         self.config = config(args_type="validator")
         print(f"\nRunning Omega VideosValidator with the following configuration:")
@@ -250,7 +250,6 @@ class VideosValidator(Module):
         self.novelty_scores_endpoint = f"{api_root}/api/get_pinecone_novelty"
         self.upload_video_metadata_endpoint = f"{api_root}/api/upload_video_metadata"
         self.num_videos = 8
-        self.client_timeout_seconds = VALIDATOR_TIMEOUT + VALIDATOR_TIMEOUT_MARGIN
 
         self.imagebind = None
         if not self.config.neuron.decentralization.off:
@@ -780,7 +779,7 @@ class VideosValidator(Module):
         Returns:
         - List[float]: The novelty scores for the miner's videos.
         """
-        keypair = self.dendrite.keypair
+        keypair = self.key
         hotkey = keypair.ss58_address
         signature = f"0x{keypair.sign(hotkey).hex()}"
         try:
@@ -808,7 +807,7 @@ class VideosValidator(Module):
         Returns:
         - str: A proxy URL
         """
-        keypair = self.dendrite.keypair
+        keypair = self.key
         hotkey = keypair.ss58_address
         signature = f"0x{keypair.sign(hotkey).hex()}"
         try:
@@ -832,7 +831,7 @@ class VideosValidator(Module):
         Returns:
         - float: The reward value for the miner.
         """
-        keypair = self.dendrite.keypair
+        keypair = self.key
         hotkey = keypair.ss58_address
         signature = f"0x{keypair.sign(hotkey).hex()}"
         try:

@@ -369,12 +369,9 @@ class VideosValidator(Module):
         for module_id in modules_keys.keys():
             module_addr = modules_filtered_address.get(module_id, None)
             
-            if module_addr is not None and module_addr[0] == "34.204.176.216":
-                modules_info[module_id] = (module_addr, modules_keys[module_id])
-
             if not module_addr:
                 continue
-            #modules_info[module_id] = (module_addr, modules_keys[module_id])
+            modules_info[module_id] = (module_addr, modules_keys[module_id])
 
         # Once we have the final modules info, grab a random selection from our config sample size
         sample_size = self.config.neuron.sample_size

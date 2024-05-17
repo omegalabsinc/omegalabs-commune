@@ -61,6 +61,18 @@ class Videos(BaseModel):
     def deserialize(self) -> typing.List[VideoMetadata]:
         assert self.video_metadata is not None
         return self.video_metadata
+    
+    def request_to_serializable_dict(self) -> dict:
+        """
+        Dumps the Videos object to a serializable dict, but makes sure to use input properties from
+        the input_synapse, while taking the non-null output property video_metadata from the
+        response (self).
+        """
+        json_str = Videos(
+            query=self.query,
+            num_videos=self.num_videos
+        ).json(include={"query", "num_videos"})
+        return json.loads(json_str)
 
     def to_serializable_dict(self, input_synapse: "Videos") -> dict:
         """

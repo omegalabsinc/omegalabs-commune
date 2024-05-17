@@ -5,8 +5,8 @@ from communex._common import get_node_url  # type: ignore
 from communex.client import CommuneClient  # type: ignore
 from communex.compat.key import classic_load_key  # type: ignore
 
-from validator._config import ValidatorSettings
-from validator.validator import get_subnet_netuid, VideosValidator
+from src.subnet.validator._config import ValidatorSettings
+from src.subnet.validator.validator import get_subnet_netuid, VideosValidator
 
 app = typer.Typer()
 
@@ -21,7 +21,7 @@ def serve(
     keypair = classic_load_key(commune_key)  # type: ignore
     settings = ValidatorSettings()  # type: ignore
     c_client = CommuneClient(get_node_url())
-    subnet_uid = get_subnet_netuid("omegalabs")
+    subnet_uid = get_subnet_netuid(c_client, "omega")
     validator = VideosValidator(
         keypair,
         subnet_uid,

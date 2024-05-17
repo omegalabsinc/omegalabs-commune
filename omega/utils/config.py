@@ -19,6 +19,7 @@
 import os
 import torch
 import argparse
+import json
 from enum import Enum
 
 from src.subnet.utils import log
@@ -257,4 +258,10 @@ def config(args_type: str = None):
     nested = nested_config(vars(args))
     # convert nested config to an object
     config_object = ConfigObject(nested)
+    return config_object
+
+def load_config_from_file(config_file_path):
+    with open(config_file_path, 'r') as config_file:
+        config_data = json.load(config_file)
+    config_object = ConfigObject(config_data)
     return config_object

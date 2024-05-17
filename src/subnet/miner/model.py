@@ -2,6 +2,7 @@ from communex.module import Module, endpoint
 from communex.key import generate_keypair
 from keylimiter import TokenBucketLimiter
 
+import omega.protocol
 from src.subnet.utils import log
 
 import time
@@ -10,7 +11,7 @@ import omega
 from omega.imagebind_wrapper import ImageBind
 from omega.miner_utils import search_and_embed_videos
 from omega.augment import LocalLLMAugment, OpenAIAugment, NoAugment
-from omega.utils.config import QueryAugment, config
+from omega.utils.config import QueryAugment, load_config_from_file
 from omega.constants import VALIDATOR_TIMEOUT
 
 class Miner(Module):
@@ -27,7 +28,9 @@ class Miner(Module):
     def __init__(self):
         super().__init__()
 
-        self.config = config(args_type="miner")
+        #self.config = config(args_type="miner")
+        self.config = load_config_from_file('miner_config.json')
+
         print(f"\nRunning Omega Miner with the following configuration:")
         print("---------------------------------------------------------")
         self.config.pretty_print()
@@ -55,6 +58,7 @@ class Miner(Module):
         Returns:
             Videos object
         """
+        synapse = omega.protocol.Videos.model_validate(synapse)
         log.info(f"Received scraping request: {synapse.num_videos} videos for query '{synapse.query}'")
         start = time.time()
         synapse.video_metadata = search_and_embed_videos(

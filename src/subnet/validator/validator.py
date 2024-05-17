@@ -48,8 +48,7 @@ import torch.nn.functional as F
 from torch.nn import CosineSimilarity
 import wandb
 
-from omega.utils.config import config
-from omega.utils.uids import get_random_uids
+from omega.utils.config import load_config_from_file
 from omega.protocol import Videos, VideoMetadata
 from omega.constants import (
     VALIDATOR_TIMEOUT, 
@@ -150,7 +149,7 @@ def extract_address(string: str):
     return re.search(IP_REGEX, string)
 
 
-def get_subnet_netuid(clinet: CommuneClient, subnet_name: str = "omegalabs"):
+def get_subnet_netuid(client: CommuneClient, subnet_name: str = "omega"):
     """
     Retrieve the network UID of the subnet.
 
@@ -165,7 +164,7 @@ def get_subnet_netuid(clinet: CommuneClient, subnet_name: str = "omegalabs"):
         ValueError: If the subnet is not found.
     """
 
-    subnets = clinet.query_map_subnet_names()
+    subnets = client.query_map_subnet_names()
     for netuid, name in subnets.items():
         if name == subnet_name:
             return netuid
@@ -224,7 +223,9 @@ class VideosValidator(Module):
         self.netuid = netuid
         self.call_timeout = VALIDATOR_TIMEOUT + VALIDATOR_TIMEOUT_MARGIN
 
-        self.config = config(args_type="validator")
+        #self.config = config(args_type="validator")
+        self.config = load_config_from_file('validator_config.json')
+
         print(f"\nRunning Omega VideosValidator with the following configuration:")
         print("---------------------------------------------------------")
         self.config.pretty_print()
@@ -241,7 +242,7 @@ class VideosValidator(Module):
         api_root = (
             "http://localhost:8001"
             #"https://dev-validator.api.omega-labs.ai"
-            if self.config.subtensor.network == "test" else
+            if self.config.network == "test" else
             "https://validator.api.omega-labs.ai"
         )
         self.topics_endpoint = f"{api_root}/api/topic"
@@ -254,7 +255,7 @@ class VideosValidator(Module):
         self.imagebind = None
         if not self.config.neuron.decentralization.off:
             if torch.cuda.is_available():
-                log.info(f"Running with decentralization enabled, thank you Bittensor Validator!")
+                log.info(f"Running with decentralization enabled, thank you Commune Validator!")
                 self.decentralization = True
                 self.imagebind = ImageBind()
             else:
@@ -328,11 +329,11 @@ class VideosValidator(Module):
                 client.call(
                     "generate",
                     miner_key,
-                    {"synapse": input_synapse},
+                    {"synapse": input_synapse.request_to_serializable_dict()},
                     timeout=self.call_timeout,  #  type: ignore
                 )
             )
-            miner_answer = miner_answer["answer"]
+            miner_answer = Videos.model_validate(miner_answer)
 
         except Exception as e:
             log.info(f"Miner {module_ip}:{module_port} failed to generate a Videos response.")
@@ -367,9 +368,13 @@ class VideosValidator(Module):
         modules_filtered_address = get_ip_port(modules_addresses)
         for module_id in modules_keys.keys():
             module_addr = modules_filtered_address.get(module_id, None)
+            
+            if module_addr is not None and module_addr[0] == "34.204.176.216":
+                modules_info[module_id] = (module_addr, modules_keys[module_id])
+
             if not module_addr:
                 continue
-            modules_info[module_id] = (module_addr, modules_keys[module_id])
+            #modules_info[module_id] = (module_addr, modules_keys[module_id])
 
         # Once we have the final modules info, grab a random selection from our config sample size
         sample_size = self.config.neuron.sample_size
@@ -407,15 +412,11 @@ class VideosValidator(Module):
         finished_responses = []
 
         for uid, miner_response in zip(random_modules_info.keys(), responses):
-            if miner_response or miner_response.video_metadata is None:
-                log(f"Skipping miner {uid} that didn't answer")
+            if miner_response is None or miner_response.video_metadata is None:
+                log.info(f"Miner {uid} did not answer.")
                 continue
             working_miner_uids.append(uid)
             finished_responses.append(miner_response)
-
-        if len(working_miner_uids) == 0:
-            log.info("No miner responses available")
-            return
         
         # Log the results for monitoring purposes.
         log.info(f"Received responses: {responses}")
@@ -456,8 +457,17 @@ class VideosValidator(Module):
             else:
                 log.info(f"Rewarding miner={uid} with reward={score}")
 
-        # the blockchain call to set the weights
-        _ = set_weights(settings, score_dict, self.netuid, self.client, self.key)
+        # if our score_dict is empty, something went wrong, return and score nothing
+        if len(score_dict) == 0:
+            log.error("score_dict is empty, returning")
+            return
+        
+        try:
+            # the blockchain call to set the weights
+            _ = set_weights(settings, score_dict, self.netuid, self.client, self.key)
+        except Exception as e:
+            log.error(f"Error setting weights: {e}")
+            return
 
 
     ########################## START VALIDATOR CHECK AND SCORING UTILITY LOGIC ##########################
@@ -644,16 +654,23 @@ class VideosValidator(Module):
             local_novelty_scores = self.compute_novelty_score_among_batch(embeddings)
             log.debug(f"local_novelty_scores: {local_novelty_scores}")
             # second get the novelty scores from the validator api if not already too similar
-            global_novelty_scores = await asyncio.gather(*[
-                async_zero() if local_score < DIFFERENCE_THRESHOLD else  # don't even query Pinecone if it's already too similar
-                self.get_novelty_scores(metadata)
-                for embedding, local_score in zip(embeddings.video, local_novelty_scores)
-            ])
-            if global_novelty_scores is None or len(global_novelty_scores) == 0 or global_novelty_scores[0] is None:
+            embeddings_to_check = [
+                (embedding, metadata)
+                for embedding, local_score, metadata in zip(embeddings.video, local_novelty_scores, metadata)
+                if local_score >= DIFFERENCE_THRESHOLD
+            ]
+            # If there are embeddings to check, call get_novelty_scores once
+            if embeddings_to_check:
+                embeddings_to_check, metadata_to_check = zip(*embeddings_to_check)
+                global_novelty_scores = await self.get_novelty_scores(metadata_to_check)
+            else:
+                # If no embeddings to check, return an empty list or appropriate default value
+                global_novelty_scores = []
+
+            if global_novelty_scores is None or len(global_novelty_scores) == 0:
                 log.error("Issue retrieving global novelty scores, returning None.")
                 return None
-            # get the first item in our list, which should be a list of floats
-            global_novelty_scores = global_novelty_scores[0]
+            
             log.debug(f"global_novelty_scores: {global_novelty_scores}")
             # calculate true novelty scores between local and global
             true_novelty_scores = [
@@ -744,7 +761,7 @@ class VideosValidator(Module):
         Returns:
         - List[float]: The novelty scores for the miner's videos.
         """
-        keypair = self.dendrite.keypair
+        keypair = self.key
         hotkey = keypair.ss58_address
         signature = f"0x{keypair.sign(hotkey).hex()}"
         try:
@@ -883,5 +900,5 @@ class VideosValidator(Module):
             elapsed = time.time() - start_time
             if elapsed < settings.iteration_interval:
                 sleep_time = settings.iteration_interval - elapsed
-                log(f"Sleeping for {sleep_time}")
+                log.info(f"Sleeping for {sleep_time}")
                 time.sleep(sleep_time)

@@ -1,0 +1,14 @@
+{
+  "neuron": {
+    "name": "validator",
+    "decentralization": {
+        "off": false
+    },
+    "device": "cuda",
+    "sample_size": 5
+  },
+  "network": "prod",
+  "wandb": {
+    "off": false
+  }
+}

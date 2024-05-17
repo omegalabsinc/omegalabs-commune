@@ -1,0 +1,10 @@
+{
+  "neuron": {
+    "name": "miner",
+    "query_augment": "NoAugment",
+    "device": "cuda"
+  },
+  "blacklist": {
+    "validator_min_stake": 0
+  }
+}

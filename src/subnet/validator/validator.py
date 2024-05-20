@@ -365,7 +365,7 @@ class VideosValidator(Module):
         valid_key = any(module["key"] == self.key.ss58_address for module in all_modules_list)
         if not valid_key:
             log.error(f"Validator key {self.key.ss58_address} is not registered in subnet {syntia_netuid}")
-            #return
+            return
 
         # filter out all modules that do not contain settings.module_name_prefix (i.e. "model.omega::") in the name attribute
         filtered_modules = [item for item in all_modules_list if settings.module_name_prefix in item["name"]]
@@ -377,7 +377,7 @@ class VideosValidator(Module):
         modules_info: dict[int, tuple[list[str], Ss58Address]] = {}
         for module in filtered_modules:
             module_id = module["uid"]
-            modules_info[module_id] = (module["address"], module["key"])
+            modules_info[module_id] = (module["address"].split(':'), module["key"])
 
         """ THIS IS CODE FOR RUNNING OUR OWN SUBNET.
         # retreive the miner information

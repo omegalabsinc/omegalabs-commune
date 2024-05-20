@@ -26,6 +26,7 @@ import re
 import time
 from functools import partial
 
+from communex.misc import get_map_modules
 from communex.client import CommuneClient  # type: ignore
 from communex.module.client import ModuleClient  # type: ignore
 from communex.module.module import Module  # type: ignore
@@ -355,6 +356,30 @@ class VideosValidator(Module):
             syntia_netuid: The network UID of the subnet.
         """
 
+        # grab all modules on the subnet
+        all_modules = get_map_modules(self.client, syntia_netuid)
+        # convert to list
+        all_modules_list = [value for _, value in all_modules.items()]
+
+        # Check if any of the modules have a key that matches `self.key.ss58_address`
+        valid_key = any(module["key"] == self.key.ss58_address for module in all_modules_list)
+        if not valid_key:
+            log.error(f"Validator key {self.key.ss58_address} is not registered in subnet {syntia_netuid}")
+            #return
+
+        # filter out all modules that do not contain settings.module_name_prefix (i.e. "model.omega::") in the name attribute
+        filtered_modules = [item for item in all_modules_list if settings.module_name_prefix in item["name"]]
+
+        if len(filtered_modules) == 0:
+            log.error(f"No '{settings.module_name_prefix}' modules found on subnet {syntia_netuid}")
+            return
+        
+        modules_info: dict[int, tuple[list[str], Ss58Address]] = {}
+        for module in filtered_modules:
+            module_id = module["uid"]
+            modules_info[module_id] = (module["address"], module["key"])
+
+        """ THIS IS CODE FOR RUNNING OUR OWN SUBNET.
         # retreive the miner information
         modules_addresses = self.get_addresses(self.client, syntia_netuid)
         modules_keys = self.client.query_map_key(syntia_netuid)
@@ -369,9 +394,13 @@ class VideosValidator(Module):
         for module_id in modules_keys.keys():
             module_addr = modules_filtered_address.get(module_id, None)
             
+            if module_addr is not None and module_addr[0] == "34.204.176.216":
+                modules_info[module_id] = (module_addr, modules_keys[module_id])
+
             if not module_addr:
                 continue
-            modules_info[module_id] = (module_addr, modules_keys[module_id])
+            #modules_info[module_id] = (module_addr, modules_keys[module_id])
+        """
 
         # Once we have the final modules info, grab a random selection from our config sample size
         sample_size = self.config.neuron.sample_size

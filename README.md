@@ -128,9 +128,20 @@ cd omegalabs-commune
 }
 ```
 
+#### Register on subnet 0 (commune) using CommuneX: VERY IMPORTANT TO USE "model.omega::" as your module name prefix.
+```bash
+comx module register model.omega::{name-of-your-miner} {your-commune-key} --ip {your-server-ip} --port {your-server-port} --netuid 0
+```
+
+#### Update an already registered module to use model.omega:: prefix
+```bash
+comx module update {your-commune-key} model.omega::{name-of-your-miner} {your-server-ip} {your-server-port} --netuid 0
+```
+
+
 #### Run with PM2
 ```bash
-pm2 start "comx module serve src.subnet.miner.model.Miner {key} --subnets-whitelist 2 --ip 0.0.0.0 --port 8000" --name omega-miner
+pm2 start "comx module serve src.subnet.miner.model.OmegaMiner {key} --subnets-whitelist 0 --ip 0.0.0.0 --port 8000" --name omega-miner
 ```
 
 #### Tips for Better Incentive
@@ -181,6 +192,11 @@ cd omegalabs-commune
     "off": false
   }
 }
+```
+
+#### Register on subnet 0 (commune) using CommuneX: VERY IMPORTANT TO USE "vali.omega::" as your module name prefix.
+```bash
+comx module register vali.omega::{name-of-your-validator} {your-commune-key} --netuid 0
 ```
 
 #### Run auto-updating validator with PM2 (recommended)

@@ -14,7 +14,7 @@ from omega.augment import LocalLLMAugment, OpenAIAugment, NoAugment
 from omega.utils.config import QueryAugment, load_config_from_file
 from omega.constants import VALIDATOR_TIMEOUT
 
-class Miner(Module):
+class OmegaMiner(Module):
     """
     A module class for mining and generating responses to prompts.
 

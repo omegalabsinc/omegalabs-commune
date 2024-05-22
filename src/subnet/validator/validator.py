@@ -106,7 +106,9 @@ def set_weights(
     # Iterate over the items in the score_dict
     for uid, score in score_dict.items():
         # Calculate the normalized weight as an integer
-        weight = int(score * 1000 / scores)
+        print("score:", score)
+        #weight = int((score / scores) * 1000)
+        weight = int(score * 1000)
 
         # Add the weighted score to the new dictionary
         weighted_scores[uid] = weight
@@ -241,8 +243,7 @@ class VideosValidator(Module):
             log.warning("Running with --wandb.off. It is strongly recommended to run with W&B enabled.")
 
         api_root = (
-            "http://localhost:8001"
-            #"https://dev-validator.api.omega-labs.ai"
+            "https://dev-validator.api.omega-labs.ai"
             if self.config.network == "test" else
             "https://validator.api.omega-labs.ai"
         )

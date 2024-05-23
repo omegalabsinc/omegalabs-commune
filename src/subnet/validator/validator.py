@@ -106,7 +106,6 @@ def set_weights(
     # Iterate over the items in the score_dict
     for uid, score in score_dict.items():
         # Calculate the normalized weight as an integer
-        print("score:", score)
         #weight = int((score / scores) * 1000)
         weight = int(score * 1000)
 
@@ -120,6 +119,8 @@ def set_weights(
     uids = list(weighted_scores.keys())
     weights = list(weighted_scores.values())
     # send the blockchain call
+    log.info(f"voting for uids: {uids}")
+    log.info(f"voting weights: {weights}")
     client.vote(key=key, uids=uids, weights=weights, netuid=netuid)
 
 

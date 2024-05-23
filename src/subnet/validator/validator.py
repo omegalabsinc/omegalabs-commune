@@ -305,15 +305,15 @@ class VideosValidator(Module):
         if err:
             return False
         latest_commit = out.decode().split()[0]
-        bt.logging.info(f'Current commit: {current_commit}, Latest commit: {latest_commit}')
+        log.info(f'Current commit: {current_commit}, Latest commit: {latest_commit}')
         return current_commit == latest_commit
 
     def should_restart(self) -> bool:
         # Check if enough time has elapsed since the last update check, if not assume we are up to date.
-        if (datetime.now() - self.last_update_check).seconds < self.update_check_interval:
+        if (dt.datetime.now() - self.last_update_check).seconds < self.update_check_interval:
             return False
         
-        self.last_update_check = datetime.now()
+        self.last_update_check = dt.datetime.now()
 
         return not self.is_git_latest()
 
@@ -951,7 +951,7 @@ class VideosValidator(Module):
             _ = asyncio.run(self.validate_step(self.netuid, settings))
 
             if self.config.neuron.auto_update and self.should_restart():
-                bt.logging.info(f'Validator is out of date, quitting to restart.')
+                log.info(f'Validator is out of date, quitting to restart.')
                 raise KeyboardInterrupt
 
             elapsed = time.time() - start_time

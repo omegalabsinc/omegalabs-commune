@@ -5,6 +5,6 @@
     "device": "cuda"
   },
   "blacklist": {
-    "validator_min_stake": 0
+    "validator_min_stake": 10240
   }
 }

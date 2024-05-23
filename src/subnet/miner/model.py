@@ -6,6 +6,7 @@ import omega.protocol
 from src.subnet.utils import log
 
 import time
+import torch
 
 import omega
 from omega.imagebind_wrapper import ImageBind
@@ -78,7 +79,7 @@ if __name__ == "__main__":
     import uvicorn
 
     key = generate_keypair()
-    miner = Miner()
+    miner = OmegaMiner()
     refill_rate = 1 / 400
     # Implementing custom limit
     bucket = TokenBucketLimiter(2, refill_rate)

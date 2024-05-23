@@ -204,10 +204,8 @@ class VideosValidator(Module):
 
     Methods:
         get_modules: Retrieve all module addresses from the subnet.
-        _get_miner_prediction: Prompt a miner module to generate an answer to the given question.
-        _score_miner: Score the generated answer against the validator's own answer.
-        get_miner_prompt: Generate a prompt for the miner modules.
-        validate_step: Perform a validation step by generating questions, prompting modules, and scoring answers.
+        _score_miner: Score the generated video metadata against our pinecone index.
+        validate_step: Perform a validation step by getting a topic, prompting modules, and scoring responses.
         validation_loop: Run the validation loop continuously based on the provided settings.
     """
 

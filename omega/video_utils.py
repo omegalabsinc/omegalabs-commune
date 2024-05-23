@@ -48,7 +48,7 @@ class YoutubeResult(BaseModel):
     views: int
 
 
-def search_videos(query, max_results=8):
+def search_videos(query, max_results=8, proxy=None):
     videos = []
     ydl_opts = {
         "format": "worst",
@@ -58,6 +58,9 @@ def search_videos(query, max_results=8):
         "simulate": True,
         "match_filter": skip_live,
     }
+    if proxy is not None:
+        ydl_opts["proxy"] = proxy
+    
     with YoutubeDL(ydl_opts) as ydl:
         try:
             search_query = f"ytsearch{max_results}:{query}"

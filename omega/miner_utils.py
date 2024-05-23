@@ -9,6 +9,23 @@ from omega.imagebind_wrapper import ImageBind
 from omega.constants import MAX_VIDEO_LENGTH, FIVE_MINUTES
 from omega import video_utils
 
+import random
+PROXIES = []
+# if proxies.txt does not exist, create it
+if not os.path.exists("proxies.txt"):
+    with open("proxies.txt", "w") as f:
+        f.write("")
+# load proxies.txt and store each proxy url in a list, one per line
+with open("proxies.txt", "r") as f:
+    PROXIES = f.read().splitlines()
+def parse_proxies(proxy_list: List[str]) -> List[str]:
+    transformed_proxies = []
+    for proxy in proxy_list:
+        proxy_ip, proxy_port, proxy_user, proxy_pass = proxy.split(':')
+        transformed_proxies.append(f"http://{proxy_user}:{proxy_pass}@{proxy_ip}:{proxy_port}")
+    return transformed_proxies
+# convert the list of proxies to a list of proxy urls
+PROXIES = parse_proxies(PROXIES)
 
 if os.getenv("OPENAI_API_KEY"):
     from openai import OpenAI
@@ -54,8 +71,13 @@ def search_and_embed_videos(query: str, num_videos: int, imagebind: ImageBind) -
     Returns:
         List[VideoMetadata]: A list of VideoMetadata objects representing the search results.
     """
+    proxy_url = None
+    if len(PROXIES) > 0:
+        proxy_url = random.choice(PROXIES)
+        log.info("Using proxy: " + proxy_url)
+
     # fetch more videos than we need
-    results = video_utils.search_videos(query, max_results=int(num_videos * 1.5))
+    results = video_utils.search_videos(query, max_results=int(num_videos * 1.5), proxy=proxy_url)
     video_metas = []
     try:
         # take the first N that we need
@@ -64,7 +86,8 @@ def search_and_embed_videos(query: str, num_videos: int, imagebind: ImageBind) -
             download_path = video_utils.download_video(
                 result.video_id,
                 start=0,
-                end=min(result.length, FIVE_MINUTES)  # download the first 5 minutes at most
+                end=min(result.length, FIVE_MINUTES),  # download the first 5 minutes at most
+                proxy=proxy_url
             )
             if download_path:
                 clip_path = None

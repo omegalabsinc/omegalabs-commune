@@ -107,12 +107,10 @@ def set_weights(
     # Iterate over the items in the score_dict
     for uid, score in score_dict.items():
         # Calculate the normalized weight as an integer
-        #weight = int((score / scores) * 1000)
-        weight = int(score * 1000)
+        weight = int((score / scores) * 1000)
 
         # Add the weighted score to the new dictionary
         weighted_scores[uid] = weight
-
 
     # filter out 0 weights
     #weighted_scores = {k: v for k, v in weighted_scores.items() if v != 0}

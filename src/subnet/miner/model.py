@@ -87,6 +87,4 @@ if __name__ == "__main__":
     server = ModuleServer(miner, key, ip_limiter=bucket, subnets_whitelist=[3])
     app = server.get_fastapi_app()
 
-    # Only allow local connections
-    #uvicorn.run(app, host="127.0.0.1", port=8000)
     uvicorn.run(app, host="0.0.0.0", port=8000)

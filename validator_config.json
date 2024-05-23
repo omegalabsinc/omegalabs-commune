@@ -7,7 +7,7 @@
     "device": "cuda",
     "sample_size": 5
   },
-  "network": "test",
+  "network": "prod",
   "wandb": {
     "off": true
   }

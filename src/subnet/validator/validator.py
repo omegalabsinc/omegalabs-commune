@@ -67,6 +67,7 @@ from omega import video_utils
 from omega.imagebind_wrapper import ImageBind, Embeddings, run_async
 
 NO_RESPONSE_MINIMUM = 0.005
+global GPU_SEMAPHORE
 GPU_SEMAPHORE = asyncio.Semaphore(1)
 DOWNLOAD_SEMAPHORE = asyncio.Semaphore(5)
 
@@ -114,7 +115,7 @@ def set_weights(
 
 
     # filter out 0 weights
-    weighted_scores = {k: v for k, v in weighted_scores.items() if v != 0}
+    #weighted_scores = {k: v for k, v in weighted_scores.items() if v != 0}
 
     uids = list(weighted_scores.keys())
     weights = list(weighted_scores.values())
@@ -658,7 +659,7 @@ class VideosValidator(Module):
                 if not passed_check:
                     return FAKE_VIDEO_PUNISHMENT
                 # create query embeddings for relevance scoring
-                query_emb = await self.imagebind.embed_text_async([videos.query])
+                query_emb = self.imagebind.embed_text([videos.query])
 
             # generate embeddings
             embeddings = Embeddings(

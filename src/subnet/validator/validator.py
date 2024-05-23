@@ -48,6 +48,7 @@ import torch
 import torch.nn.functional as F
 from torch.nn import CosineSimilarity
 import wandb
+from subprocess import Popen, PIPE
 
 from omega.utils.config import load_config_from_file
 from omega.protocol import Videos, VideoMetadata
@@ -67,7 +68,6 @@ from omega import video_utils
 from omega.imagebind_wrapper import ImageBind, Embeddings, run_async
 
 NO_RESPONSE_MINIMUM = 0.005
-global GPU_SEMAPHORE
 GPU_SEMAPHORE = asyncio.Semaphore(1)
 DOWNLOAD_SEMAPHORE = asyncio.Semaphore(5)
 
@@ -222,6 +222,16 @@ class VideosValidator(Module):
         self.key = key
         self.netuid = netuid
         self.call_timeout = VALIDATOR_TIMEOUT + VALIDATOR_TIMEOUT_MARGIN
+
+        # grab all modules on the subnet
+        all_modules = get_map_modules(self.client, self.netuid)
+        # convert to list
+        all_modules_list = [value for _, value in all_modules.items()]
+        self.uid = None
+        # Check if any of the modules have a key that matches this validator key: `self.key.ss58_address`
+        for module in all_modules_list:
+            if module["key"] == self.key.ss58_address:
+                self.uid = module["uid"]
         
         self.last_update_check = dt.datetime.now()
         self.update_check_interval = 1800  # 30 minutes
@@ -951,6 +961,17 @@ class VideosValidator(Module):
             if self.config.neuron.auto_update and self.should_restart():
                 log.info(f'Validator is out of date, quitting to restart.')
                 raise KeyboardInterrupt
+
+            # Check if we should start a new wandb run.
+            if not self.config.wandb.off:
+                if (dt.datetime.now() - self.wandb_run_start) >= dt.timedelta(
+                    days=1
+                ):
+                    bt.logging.info(
+                        "Current wandb run is more than 1 day old. Starting a new run."
+                    )
+                    self.wandb_run.finish()
+                    self.new_wandb_run()
 
             elapsed = time.time() - start_time
             if elapsed < settings.iteration_interval:

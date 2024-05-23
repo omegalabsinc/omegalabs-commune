@@ -28,8 +28,9 @@ class OmegaMiner(Module):
     def __init__(self):
         super().__init__()
 
-        #self.config = config(args_type="miner")
         self.config = load_config_from_file('miner_config.json')
+        if not torch.cuda.is_available():
+            self.config.device = "cpu"
 
         print(f"\nRunning Omega Miner with the following configuration:")
         print("---------------------------------------------------------")
@@ -73,9 +74,6 @@ class OmegaMiner(Module):
 
 
 if __name__ == "__main__":
-    """
-    Example
-    """
     from communex.module.server import ModuleServer
     import uvicorn
 
@@ -84,7 +82,7 @@ if __name__ == "__main__":
     refill_rate = 1 / 400
     # Implementing custom limit
     bucket = TokenBucketLimiter(2, refill_rate)
-    server = ModuleServer(miner, key, ip_limiter=bucket, subnets_whitelist=[3])
+    server = ModuleServer(miner, key, ip_limiter=bucket, subnets_whitelist=[0])
     app = server.get_fastapi_app()
 
     uvicorn.run(app, host="0.0.0.0", port=8000)

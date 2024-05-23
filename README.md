@@ -135,13 +135,13 @@ comx module register model.omega::{name-of-your-miner} {your-commune-key} --ip {
 
 #### Update an already registered module to use model.omega:: prefix
 ```bash
-comx module update {your-commune-key} model.omega::{name-of-your-miner} {your-server-ip} {your-server-port} --netuid 0
+comx module update {your-commune-key} --name model.omega::{name-of-your-miner} --ip {your-server-ip} --port {your-server-port} --netuid 0
 ```
 
 
 #### Run with PM2
 ```bash
-pm2 start "comx module serve src.subnet.miner.model.OmegaMiner {key} --subnets-whitelist 0 --ip 0.0.0.0 --port 8000" --name omega-miner
+pm2 start "comx module serve src.subnet.miner.model.OmegaMiner {key} --subnets-whitelist 0 --ip 0.0.0.0 --port {your-server-port}" --name omega-miner
 ```
 
 #### Tips for Better Incentive
@@ -201,18 +201,13 @@ comx module register vali.omega::{name-of-your-validator} {your-commune-key} --n
 
 #### Run auto-updating validator with PM2 (recommended)
 ```bash
-pm2 start auto_updating_validator.sh --name omega-validator -- \
-    --netuid {netuid} \
-    --wallet.name {wallet} \
-    --wallet.hotkey {hotkey} \
-    --axon.port {port} \
-    --logging.trace
+pm2 start auto_updating_validator.sh --name omega-validator -- {your-commune-key}
 ```
-Note: you might need to adjust "python" to "python3" within the `neurons/auto_updating_validator.sh` depending on your preferred system python.
+Note: you might need to adjust "python" to "python3" within the `auto_updating_validator.sh` depending on your preferred system python.
 
 #### Run basic validator with PM2
 ```bash
-pm2 start python3 --name omega-vali --interpreter=python3 -- -m src.subnet.cli {key}
+pm2 start python3 --name omega-vali --interpreter=python3 -- -m src.subnet.cli {your-commune-key}
 ```
 
 ## Contributing

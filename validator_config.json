@@ -5,7 +5,8 @@
         "off": false
     },
     "device": "cuda",
-    "sample_size": 5
+    "sample_size": 5,
+    "auto_update": true
   },
   "network": "prod",
   "wandb": {

@@ -116,6 +116,11 @@ def search_and_embed_videos(query: str, num_videos: int, imagebind: ImageBind) -
                 break
 
     except Exception as e:
-        log.error(f"Error searching for videos: {e}")
+        error_message = str(e)
+        if isinstance(e, AttributeError) and "'NDArray' object has no attribute 'to'" in error_message:
+            log.error("Detected NDArray attribute error, raising KeyboardInterrupt to force reload.")
+            raise KeyboardInterrupt
+        else:
+            log.error(f"Error searching for videos: {e}")
 
     return video_metas

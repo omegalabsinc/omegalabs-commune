@@ -52,11 +52,13 @@ class Videos(BaseModel):
     - query: the input query for which to find relevant videos
     - num_videos: the number of videos to return
     - video_metadata: a list of video metadata objects
+    - hotkey: the hotkey for the responding miner
     """
 
     query: str
     num_videos: int
     video_metadata: typing.Optional[typing.List[VideoMetadata]] = None
+    hotkey: str = None
 
     def deserialize(self) -> typing.List[VideoMetadata]:
         assert self.video_metadata is not None

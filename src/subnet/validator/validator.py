@@ -83,7 +83,6 @@ def set_weights(
     # you can implement your custom logic for scoring
     netuid: int,
     client: CommuneClient,
-    commune_node_url: str,
     key: Keypair,
 ) -> None:
     """
@@ -96,8 +95,8 @@ def set_weights(
         key: The keypair for signing transactions.
     """
     # creating new client to avoid Websocket timeout issues. Using same commune_node_url as initial CommuneClient instantiation
-    log.info("RE-INITIALIZING CLIENT WITH NODE URL:", commune_node_url)
-    client = CommuneClient(commune_node_url)
+    log.info("RE-INITIALIZING COMMUNE CLIENT WITH NEW NODE")
+    c_client = CommuneClient(get_node_url())
 
     # you can replace with `max_allowed_weights` with the amount your subnet allows
     score_dict = cut_to_max_allowed_weights(score_dict, settings.max_allowed_weights)
@@ -125,7 +124,7 @@ def set_weights(
     # send the blockchain call
     log.info(f"voting for uids: {uids}")
     log.info(f"voting weights: {weights}")
-    client.vote(key=key, uids=uids, weights=weights, netuid=netuid)
+    c_client.vote(key=key, uids=uids, weights=weights, netuid=netuid)
 
 
 def cut_to_max_allowed_weights(

@@ -83,6 +83,7 @@ def set_weights(
     # you can implement your custom logic for scoring
     netuid: int,
     client: CommuneClient,
+    commune_node_url: str,
     key: Keypair,
 ) -> None:
     """
@@ -94,8 +95,8 @@ def set_weights(
         client: The CommuneX client.
         key: The keypair for signing transactions.
     """
-    # creating new client to avoid Websocket timeout issues.
-    client = CommuneClient(get_node_url())
+    # creating new client to avoid Websocket timeout issues. Using same commune_node_url as initial CommuneClient instantiation
+    client = CommuneClient(commune_node_url)
 
     # you can replace with `max_allowed_weights` with the amount your subnet allows
     score_dict = cut_to_max_allowed_weights(score_dict, settings.max_allowed_weights)
@@ -216,12 +217,14 @@ class VideosValidator(Module):
         self,
         key: Keypair,
         netuid: int,
-        client: CommuneClient,
+        #client: CommuneClient,
         call_timeout: int = 60,
     ) -> None:
         
         super().__init__()
-        self.client = client
+        self.commune_node_url = get_node_url()
+        log.info("COMMUNE NODE URL:", self.commune_node_url)
+        self.client = CommuneClient(self.commune_node_url)
         self.key = key
         self.netuid = netuid
         self.call_timeout = VALIDATOR_TIMEOUT + VALIDATOR_TIMEOUT_MARGIN
@@ -529,7 +532,7 @@ class VideosValidator(Module):
         
         try:
             # the blockchain call to set the weights
-            _ = set_weights(settings, score_dict, self.netuid, self.client, self.key)
+            _ = set_weights(settings, score_dict, self.netuid, self.client, self.commune_node_url, self.key)
         except Exception as e:
             log.error(f"Error setting weights: {e}")
             return

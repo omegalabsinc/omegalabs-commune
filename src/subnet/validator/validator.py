@@ -96,6 +96,7 @@ def set_weights(
         key: The keypair for signing transactions.
     """
     # creating new client to avoid Websocket timeout issues. Using same commune_node_url as initial CommuneClient instantiation
+    log.info("RE-INITIALIZING CLIENT WITH NODE URL:", commune_node_url)
     client = CommuneClient(commune_node_url)
 
     # you can replace with `max_allowed_weights` with the amount your subnet allows

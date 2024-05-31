@@ -96,7 +96,7 @@ def set_weights(
     """
     # creating new client to avoid Websocket timeout issues. Using same commune_node_url as initial CommuneClient instantiation
     log.info("RE-INITIALIZING COMMUNE CLIENT WITH NEW NODE")
-    c_client = CommuneClient(get_node_url())
+    client = CommuneClient(get_node_url())
 
     # you can replace with `max_allowed_weights` with the amount your subnet allows
     score_dict = cut_to_max_allowed_weights(score_dict, settings.max_allowed_weights)
@@ -124,7 +124,7 @@ def set_weights(
     # send the blockchain call
     log.info(f"voting for uids: {uids}")
     log.info(f"voting weights: {weights}")
-    c_client.vote(key=key, uids=uids, weights=weights, netuid=netuid)
+    client.vote(key=key, uids=uids, weights=weights, netuid=netuid)
 
 
 def cut_to_max_allowed_weights(
@@ -532,7 +532,7 @@ class VideosValidator(Module):
         
         try:
             # the blockchain call to set the weights
-            _ = set_weights(settings, score_dict, self.netuid, self.client, self.commune_node_url, self.key)
+            _ = set_weights(settings, score_dict, self.netuid, self.client, self.key)
         except Exception as e:
             log.error(f"Error setting weights: {e}")
             return

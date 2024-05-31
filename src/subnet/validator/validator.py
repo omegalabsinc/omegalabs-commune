@@ -26,6 +26,7 @@ import re
 import time
 from functools import partial
 
+from communex._common import get_node_url
 from communex.misc import get_map_modules
 from communex.client import CommuneClient  # type: ignore
 from communex.module.client import ModuleClient  # type: ignore
@@ -93,6 +94,8 @@ def set_weights(
         client: The CommuneX client.
         key: The keypair for signing transactions.
     """
+    # creating new client to avoid Websocket timeout issues.
+    client = CommuneClient(get_node_url())
 
     # you can replace with `max_allowed_weights` with the amount your subnet allows
     score_dict = cut_to_max_allowed_weights(score_dict, settings.max_allowed_weights)
@@ -252,6 +255,7 @@ class VideosValidator(Module):
                 log.error("WANDB_API_KEY not found. Set it with `export WANDB_API_KEY=<your API key>`. Alternatively, you can disable W&B with --wandb.off, but it is strongly recommended to run with W&B enabled.")
         else:
             log.warning("Running with --wandb.off. It is strongly recommended to run with W&B enabled.")
+        self.wandb_run_start = dt.datetime.now()
 
         api_root = (
             "https://dev-validator.api.omega-labs.ai"
@@ -967,7 +971,7 @@ class VideosValidator(Module):
                 if (dt.datetime.now() - self.wandb_run_start) >= dt.timedelta(
                     days=1
                 ):
-                    bt.logging.info(
+                    log.info(
                         "Current wandb run is more than 1 day old. Starting a new run."
                     )
                     self.wandb_run.finish()

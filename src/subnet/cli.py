@@ -20,7 +20,9 @@ def serve(
 ):
     keypair = classic_load_key(commune_key)  # type: ignore
     settings = ValidatorSettings()  # type: ignore
-    c_client = CommuneClient(get_node_url())
+    commune_node_url = get_node_url()
+    print("NODE URL:", commune_node_url)
+    c_client = CommuneClient(commune_node_url)
     #subnet_uid = get_subnet_netuid(c_client, "omega")
     subnet_uid = 0
     validator = VideosValidator(

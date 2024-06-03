@@ -483,6 +483,7 @@ class VideosValidator(Module):
             if miner_response is None or miner_response.video_metadata is None:
                 log.info(f"Miner {uid} did not answer.")
                 continue
+            miner_response.hotkey = random_modules_info[uid][1]
             working_miner_uids.append(uid)
             finished_responses.append(miner_response)
         
@@ -674,6 +675,10 @@ class VideosValidator(Module):
     ) -> torch.FloatTensor:
         
         try:
+            # return minimum score if no videos were found in video_metadata
+            if len(videos.video_metadata) == 0:
+                return MIN_SCORE
+
             # check video_ids for fake videos
             if any(not video_utils.is_valid_id(video.video_id) for video in videos.video_metadata):
                 return FAKE_VIDEO_PUNISHMENT
@@ -791,8 +796,9 @@ class VideosValidator(Module):
                 score: {score}
             ''')
 
-            # Upload our final results to API endpoint for index and dataset insertion
-            upload_result = await self.upload_video_metadata(metadata, description_relevance_scores, query_relevance_scores, videos.query)
+            # Upload our final results to API endpoint for index and dataset insertion. Include leaderboard statistics
+            miner_hotkey = videos.hotkey
+            upload_result = await self.upload_video_metadata(metadata, description_relevance_scores, query_relevance_scores, videos.query, novelty_score, score, miner_hotkey)
             if upload_result:
                 log.info("Uploading of video metadata successful.")
             else:
@@ -821,7 +827,16 @@ class VideosValidator(Module):
         return rewards
         
     
-    async def upload_video_metadata(self, metadata: List[VideoMetadata], description_relevance_scores: List[float], query_relevance_scores: List[float], query: str) -> bool:
+    async def upload_video_metadata(
+        self, 
+        metadata: List[VideoMetadata], 
+        description_relevance_scores: List[float], 
+        query_relevance_scores: List[float], 
+        query: str,
+        novelty_score: float, 
+        score: float, 
+        miner_hotkey: str
+    ) -> bool:
         """
         Queries the validator api to get novelty scores for supplied videos. 
         Returns a list of float novelty scores for each video after deduplicating.
@@ -841,7 +856,10 @@ class VideosValidator(Module):
                     "metadata": serialized_metadata,
                     "description_relevance_scores": description_relevance_scores,
                     "query_relevance_scores": query_relevance_scores,
-                    "topic_query": query
+                    "topic_query": query,
+                    "novelty_score": novelty_score,
+                    "total_score": score,
+                    "miner_hotkey": miner_hotkey
                 }
 
                 async with session.post(

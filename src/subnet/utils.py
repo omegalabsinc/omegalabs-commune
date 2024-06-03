@@ -5,8 +5,8 @@ import sys
 
 def iso_timestamp_now() -> str:
     now = datetime.datetime.now(tz=datetime.timezone.utc)
-    iso_now = now.isoformat()
-    return iso_now
+    formatted_now = now.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]  # Truncate microseconds to milliseconds
+    return formatted_now
 
 """
 def log(

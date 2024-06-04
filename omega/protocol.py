@@ -58,7 +58,7 @@ class Videos(BaseModel):
     query: str
     num_videos: int
     video_metadata: typing.Optional[typing.List[VideoMetadata]] = None
-    hotkey: str = None
+    hotkey: typing.Optional[str] = None
 
     def deserialize(self) -> typing.List[VideoMetadata]:
         assert self.video_metadata is not None

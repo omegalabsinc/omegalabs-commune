@@ -44,6 +44,7 @@ import datetime as dt
 import os
 import random
 import traceback
+import requests
 
 import torch
 import torch.nn.functional as F
@@ -246,6 +247,10 @@ class VideosValidator(Module):
         if not torch.cuda.is_available():
             self.config.device = "cpu"
 
+        # update config topics path
+        if self.config.topics_path is not None:
+            self.config.topics_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", self.config.topics_path)
+
         print(f"\nRunning Omega VideosValidator with the following configuration:")
         print("---------------------------------------------------------")
         self.config.pretty_print()
@@ -265,12 +270,15 @@ class VideosValidator(Module):
             if self.config.network == "test" else
             "https://validator.api.omega-labs.ai"
         )
-        self.topics_endpoint = f"{api_root}/api/topic"
         self.validation_endpoint = f"{api_root}/api/validate"
         self.proxy_endpoint = f"{api_root}/api/get_proxy"
         self.novelty_scores_endpoint = f"{api_root}/api/get_pinecone_novelty"
         self.upload_video_metadata_endpoint = f"{api_root}/api/upload_video_metadata"
         self.num_videos = 8
+
+        # load topics from topics URL (CSV) or fallback to local topics file
+        self.load_topics_start = dt.datetime.now()
+        self.all_topics = self.load_topics()
 
         self.imagebind = None
         if not self.config.neuron.decentralization.off:
@@ -308,6 +316,22 @@ class VideosValidator(Module):
             anonymous="allow",
         )
         log.debug(f"Started a new wandb run: {name}")
+
+    def load_topics(self):
+        # get topics from CSV URL and load them into our topics list
+        try:
+            response = requests.get(self.config.topics_url)
+            response.raise_for_status()
+            # split the response text into a list of topics and trim any whitespace
+            all_topics = [line.strip() for line in response.text.split("\n")]
+            log.info(f"Loaded {len(all_topics)} topics from {self.config.topics_url}")
+        except Exception as e:
+            log.error(f"Error loading topics from URL {self.config.topics_url}: {e}")
+            traceback.print_exc()
+            log.info(f"Using fallback topics from {self.config.topics_path}")
+            all_topics = [line.strip() for line in open(self.config.topics_path) if line.strip()]
+            log.info(f"Loaded {len(all_topics)} topics from {self.config.topics_path}")
+        return all_topics
 
     def is_git_latest(self) -> bool:
         p = Popen(['git', 'rev-parse', 'HEAD'], stdout=PIPE, stderr=PIPE)
@@ -457,15 +481,8 @@ class VideosValidator(Module):
             log.info("No miners available")
             return
 
-        try:
-            async with ClientSession() as session:
-                async with session.get(self.topics_endpoint) as response:
-                    response.raise_for_status()
-                    query = await response.json()
-        except Exception as e:
-            log.error(f"Error in get_topics: {e}")
-            return
-        
+        # Grab random topic from our list of topics
+        query = random.choice(self.all_topics)
         log.info(f"Sending query '{query}' to miners {random_modules_info.keys()}")
         # Create the input synapse to request the miner with
         input_synapse = Videos(query=query, num_videos=self.num_videos)
@@ -725,7 +742,7 @@ class VideosValidator(Module):
             
             # first get local novelty scores
             local_novelty_scores = self.compute_novelty_score_among_batch(embeddings)
-            log.debug(f"local_novelty_scores: {local_novelty_scores}")
+            #log.debug(f"local_novelty_scores: {local_novelty_scores}")
             # second get the novelty scores from the validator api if not already too similar
             embeddings_to_check = [
                 (embedding, metadata)
@@ -744,13 +761,13 @@ class VideosValidator(Module):
                 log.error("Issue retrieving global novelty scores, returning None.")
                 return None
             
-            log.debug(f"global_novelty_scores: {global_novelty_scores}")
+            #log.debug(f"global_novelty_scores: {global_novelty_scores}")
             # calculate true novelty scores between local and global
             true_novelty_scores = [
                 min(local_score, global_score) for local_score, global_score
                 in zip(local_novelty_scores, global_novelty_scores)
             ]
-            log.debug(f"true_novelty_scores: {true_novelty_scores}")
+            #log.debug(f"true_novelty_scores: {true_novelty_scores}")
 
             pre_filter_metadata_length = len(metadata)
             # check scores from index for being too similar
@@ -765,9 +782,6 @@ class VideosValidator(Module):
             # return minimum score if no unique videos were found
             if len(metadata) == 0:
                 return MIN_SCORE
-
-            # compute our final novelty score
-            novelty_score = self.compute_final_novelty_score(true_novelty_scores)
             
             # Compute relevance scores
             description_relevance_scores = F.cosine_similarity(
@@ -780,9 +794,8 @@ class VideosValidator(Module):
             # Aggregate scores
             score = (
                 sum(description_relevance_scores) +
-                sum(query_relevance_scores) +
-                novelty_score
-            ) / 3 / videos.num_videos
+                sum(query_relevance_scores)
+            ) / 2 / videos.num_videos
             
             # Set final score, giving minimum if necessary
             score = max(score, MIN_SCORE)
@@ -792,13 +805,12 @@ class VideosValidator(Module):
                 is_unique: {[not is_sim for is_sim in is_too_similar]},
                 description_relevance_scores: {description_relevance_scores},
                 query_relevance_scores: {query_relevance_scores},
-                novelty_score: {novelty_score},
                 score: {score}
             ''')
 
             # Upload our final results to API endpoint for index and dataset insertion. Include leaderboard statistics
             miner_hotkey = videos.hotkey
-            upload_result = await self.upload_video_metadata(metadata, description_relevance_scores, query_relevance_scores, videos.query, novelty_score, score, miner_hotkey)
+            upload_result = await self.upload_video_metadata(metadata, description_relevance_scores, query_relevance_scores, videos.query, None, score, miner_hotkey)
             if upload_result:
                 log.info("Uploading of video metadata successful.")
             else:
@@ -997,6 +1009,14 @@ class VideosValidator(Module):
                     )
                     self.wandb_run.finish()
                     self.new_wandb_run()
+
+            # Check if we should reload the topics.
+            if (dt.datetime.now() - self.load_topics_start) >= dt.timedelta(
+                hours=1
+            ):
+                log.info("Reloading topics after 1 hour.")
+                self.all_topics = self.load_topics()
+                self.load_topics_start = dt.datetime.now()
 
             elapsed = time.time() - start_time
             if elapsed < settings.iteration_interval:

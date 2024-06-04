@@ -5,11 +5,13 @@
         "off": false
     },
     "device": "cuda",
-    "sample_size": 5,
+    "sample_size": 10,
     "auto_update": true
   },
   "network": "prod",
   "wandb": {
-    "off": true
-  }
+    "off": false
+  },
+  "topics_url": "https://docs.google.com/spreadsheets/d/e/2PACX-1vR3jKfd4qkxXt5rTvXTTSsz_RYGkxcxh6-jvB9H0Mljiz-nai7xG-E63qEQ9jQhQabBrIAeJWtgKg5j/pub?gid=0&single=true&output=csv",
+  "topics_path": "topics.txt"
 }

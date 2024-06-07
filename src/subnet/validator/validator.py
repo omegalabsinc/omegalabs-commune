@@ -1003,3 +1003,6 @@ class VideosValidator(Module):
                 sleep_time = settings.iteration_interval - elapsed
                 log.info(f"Sleeping for {sleep_time}")
                 time.sleep(sleep_time)
+
+            # re-initialize the client to prevent connection issues and current bugs with nodes
+            self.client = CommuneClient(get_node_url())
